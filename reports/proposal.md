@@ -1,4 +1,4 @@
-# C/C++ Digital Synthesizer
+# Digital Synthesizers in C
 ### William Derksen, Matt Brucker
 
 ## Main Idea
