@@ -11,6 +11,7 @@ to the default PCM device for 5 seconds of data.
 
 #include "pcm.h"
 
+// Opens a specified playback device and sets hardware settings.
 void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_pcm_uframes_t * frame_size, unsigned int * sample_rate, char * dev_name) {
     int dir;
     int res = snd_pcm_open(handle, dev_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC);
@@ -29,9 +30,11 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_
     // Get period size and time
     snd_pcm_hw_params_get_period_size(*params, frame_size, &dir);
     snd_pcm_hw_params_get_period_time(*params, sample_rate, &dir);
-
 }
 
+void get_sample(char * buffer, int sample_size) {
+    int res = read(0, buffer, sample_size);
+}
 
 int main () {
     long loops;
@@ -44,8 +47,6 @@ int main () {
     unsigned int sample_rate = 44100;
 
     open_playback_device(&handle, &params, &frames, &sample_rate, "default");
-
-
     size = frames * 4; /* 2 bytes/sample, 2 channels */
     buffer = (char *) malloc(size);
 
@@ -54,7 +55,7 @@ int main () {
     loops = TIME / sample_rate;
 
     for (; loops > 0; loops--) {
-        res = read(0, buffer, size);
+        get_sample(buffer, size);
         res = snd_pcm_writei(handle, buffer, frames);
     }
 
