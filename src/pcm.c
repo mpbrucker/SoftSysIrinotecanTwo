@@ -1,11 +1,3 @@
-/*
-
-This example reads standard from input and writes
-to the default PCM device for 5 seconds of data.
-
-*/
-
-/* Use the newer ALSA API */
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #define TIME 5000000
 
