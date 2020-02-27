@@ -9,11 +9,9 @@ to the default PCM device for 5 seconds of data.
 #define ALSA_PCM_NEW_HW_PARAMS_API
 
 #include "pcm.h"
-#include <alsa/asoundlib.h>
 
-void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, char * dev_name) {
+void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_pcm_uframes_t * frame_size, char * dev_name) {
     unsigned int val = 44100;
-    snd_pcm_uframes_t frames = 16;
     int dir;
     int res = snd_pcm_open(handle, dev_name,
                         SND_PCM_STREAM_PLAYBACK, 0);
@@ -26,64 +24,44 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, char
     snd_pcm_hw_params_set_channels(*handle, *params, 2);
     // Set sample rate and period size (_near sets parameter space as close as possible)
     snd_pcm_hw_params_set_rate_near(*handle, *params, &val, &dir);
-    snd_pcm_hw_params_set_period_size_near(*handle, *params, &frames, &dir);
+    snd_pcm_hw_params_set_period_size_near(*handle, *params, frame_size, &dir);
 
-    /* Write the parameters to the driver */
     res = snd_pcm_hw_params(*handle, *params);
+    // Get period size and time
+    snd_pcm_hw_params_get_period_size(*params, frame_size, &dir);
+    snd_pcm_hw_params_get_period_time(*params, &val, &dir);
+
 }
 
 
 int main () {
-  long loops;
-  int size;
-  snd_pcm_t *handle;
-  snd_pcm_hw_params_t *params;
-  char *buffer;
+    long loops;
+    int size;
+    snd_pcm_t *handle;
+    snd_pcm_hw_params_t *params;
+    char *buffer;
+    snd_pcm_uframes_t frames = 16;
 
-  open_playback_device(&handle, &params, "default");
+
+    open_playback_device(&handle, &params, "default");
 
 
-//   /* Use a buffer large enough to hold one period */
-//   snd_pcm_hw_params_get_period_size(params, &frames,
-//                                     &dir);
-//   size = frames * 4; /* 2 bytes/sample, 2 channels */
-//   buffer = (char *) malloc(size);
+    size = frames * 4; /* 2 bytes/sample, 2 channels */
+    buffer = (char *) malloc(size);
 
-//   /* We want to loop for 5 seconds */
-//   snd_pcm_hw_params_get_period_time(params,
-//                                     &val, &dir);
-//   /* 5 seconds in microseconds divided by
-//    * period time */
-//   loops = 5000000 / val;
+    /* 5 seconds in microseconds divided by
+    * period time */
+    loops = 5000000 / val;
 
-//   while (loops > 0) {
-//     loops--;
-//     rc = read(0, buffer, size);
-//     if (rc == 0) {
-//       fprintf(stderr, "end of file on input\n");
-//       break;
-//     } else if (rc != size) {
-//       fprintf(stderr,
-//               "short read: read %d bytes\n", rc);
-//     }
-//     rc = snd_pcm_writei(handle, buffer, frames);
-//     if (rc == -EPIPE) {
-//       /* EPIPE means underrun */
-//       fprintf(stderr, "underrun occurred\n");
-//       snd_pcm_prepare(handle);
-//     } else if (rc < 0) {
-//       fprintf(stderr,
-//               "error from writei: %s\n",
-//               snd_strerror(rc));
-//     }  else if (rc != (int)frames) {
-//       fprintf(stderr,
-//               "short write, write %d frames\n", rc);
-//     }
-//   }
+    while (loops > 0) {
+    loops--;
+    rc = read(0, buffer, size);
+    rc = snd_pcm_writei(handle, buffer, frames);
+    }
 
-//   snd_pcm_drain(handle);
-//   snd_pcm_close(handle);
-//   free(buffer);
+    snd_pcm_drain(handle);
+    snd_pcm_close(handle);
+    free(buffer);
 
-  return 0;
+    return 0;
 }
