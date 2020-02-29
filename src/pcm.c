@@ -42,11 +42,7 @@ static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *
             int i;
         } fval;
         int res, i;
-        if (is_float) {
-            fval.f = sin(phase);
-            res = fval.i;
-        } else
-            res = sin(phase) * maxval;
+        res = sin(phase) * maxval;
         if (to_unsigned)
             res ^= 1U << (format_bits - 1);
         for (chn = 0; chn < channels; chn++) {
@@ -67,29 +63,17 @@ static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *
     *_phase = phase;
 }
 
-int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas)
-{
-    double phase = 0;
+int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas, snd_pcm_uframes_t period_size, double * phase) {
     signed short *ptr;
-    int err, cptr;
-    while (1) {
-        generate_sine(areas, 0, period_size, &phase);
-        ptr = samples;
-        cptr = period_size;
-        while (cptr > 0) {
-            err = snd_pcm_writei(handle, ptr, cptr);
-            if (err == -EAGAIN)
-                continue;
-            if (err < 0) {
-                if (xrun_recovery(handle, err) < 0) {
-                    printf("Write error: %s\n", snd_strerror(err));
-                    exit(EXIT_FAILURE);
-                }
-                break;  /* skip one period */
-            }
-            ptr += err * channels;
-            cptr -= err;
-        }
+    int bytes_written, remaining;
+
+    generate_sine(areas, 0, period_size, phase);
+    ptr = samples;
+    remaining = period_size;
+    while (remaining > 0) {
+        bytes_written = snd_pcm_writei(handle, ptr, remaining); // TODO: error check this
+        ptr += bytes_written * CHANNELS;
+        remaining -= bytes_written;
     }
 }
 
@@ -115,7 +99,7 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_
     snd_pcm_hw_params_get_period_time(*params, sample_rate, &dir);
 }
 
-void get_sample(char * buffer, int sample_size) {
+void get_sample(signed short * buffer, int sample_size) {
     int res = read(0, buffer, sample_size);
 }
 
@@ -123,23 +107,35 @@ int main () {
     long loops;
     int size;
     int res;
+    double phase = 0;
     snd_pcm_t *handle;
     snd_pcm_hw_params_t *params;
-    char *samples;
+
+    signed short * samples; // 2 byte data size, because each frame is 2 bytes
+    snd_pcm_channel_area_t *areas;
+
     snd_pcm_uframes_t period_size = 16; // period size
     unsigned int sample_rate = 44100;
 
     open_playback_device(&handle, &params, &period_size, &sample_rate, "default");
-    size = period_size * 2 * CHANNELS; /* 2 bytes/sample, 2 channels */
-    samples = (char *) malloc(period_size * CHANNELS * snd_pcm_format_physical_width(FORMAT));
+
+    // Allocate the sample and area buffers
+    samples = malloc((period_size * CHANNELS * snd_pcm_format_physical_width(FORMAT)) / 8);
+    areas = calloc(CHANNELS, sizeof(snd_pcm_channel_area_t));
+
+    // set up the area buffer for each channel
+    for (int chn = 0; chn < CHANNELS; chn++) {
+        areas[chn].addr = samples;
+        areas[chn].first = chn * snd_pcm_format_physical_width(FORMAT);
+        areas[chn].step = CHANNELS * snd_pcm_format_physical_width(FORMAT);
+    }
 
     /* 5 seconds in microseconds divided by
     * period time */
     loops = TIME / sample_rate;
 
     for (; loops > 0; loops--) {
-        get_sample(samples, size);
-        res = snd_pcm_writei(handle, samples, period_size);
+        write_samples(handle, samples, areas, period_size, &phase);
     }
 
     snd_pcm_drain(handle);
