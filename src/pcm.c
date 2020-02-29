@@ -5,7 +5,6 @@
 #define CHANNELS 1 // number of audio channels
 
 #include "pcm.h"
-#include <math.h>
 
 static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *_phase, unsigned int sample_rate)
 {
@@ -18,9 +17,12 @@ static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *
     int format_bits = snd_pcm_format_width(FORMAT);
     unsigned int maxval = (1 << (format_bits - 1)) - 1;
     int bps = format_bits / 8;  /* bytes per sample */
-    int phys_bps = snd_pcm_format_physical_width(format) / 8;
-    int big_endian = snd_pcm_format_big_endian(format) == 1;
-    int to_unsigned = snd_pcm_format_unsigned(format) == 1;
+    int phys_bps = snd_pcm_format_physical_width(FORMAT) / 8;
+    printf("%d", phys_bps);
+    int big_endian = snd_pcm_format_big_endian(FORMAT) == 1;
+    printf("%d", big_endian);
+    int to_unsigned = snd_pcm_format_unsigned(FORMAT) == 1;
+    printf("%d", to_unsigned);
     int res;
     // set the step size for each channel;
     for (chn = 0; chn < CHANNELS; chn++) {
@@ -53,7 +55,7 @@ int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area
     signed short *ptr;
     int bytes_written, remaining;
 
-    generate_sine(areas, period_size, phase, sample_rate);
+    sample_sine(areas, period_size, phase, sample_rate);
     ptr = samples;
     remaining = period_size;
     while (remaining > 0) {
@@ -83,10 +85,6 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_
     // Get period size and time
     snd_pcm_hw_params_get_period_size(*params, period_size, &dir);
     snd_pcm_hw_params_get_period_time(*params, sample_rate, &dir);
-}
-
-void get_sample(signed short * buffer, int sample_size) {
-    int res = read(0, buffer, sample_size);
 }
 
 int main () {
