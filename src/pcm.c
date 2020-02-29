@@ -1,6 +1,6 @@
 #define ALSA_PCM_NEW_HW_PARAMS_API
-#define TIME 5000000
-#define TONE_FREQ 440
+#define TIME 2000000
+#define TONE_FREQ 50
 #define FORMAT SND_PCM_FORMAT_S16_LE
 #define CHANNELS 1 // number of audio channels
 
@@ -18,29 +18,23 @@ static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *
     unsigned int maxval = (1 << (format_bits - 1)) - 1;
     int bps = format_bits / 8;  /* bytes per sample */
     int phys_bps = snd_pcm_format_physical_width(FORMAT) / 8;
-    printf("%d", phys_bps);
     int big_endian = snd_pcm_format_big_endian(FORMAT) == 1;
-    printf("%d", big_endian);
+    // printf("%d", big_endian);
     int to_unsigned = snd_pcm_format_unsigned(FORMAT) == 1;
-    printf("%d", to_unsigned);
+    // printf("%d", to_unsigned);
     int res;
     // set the step size for each channel;
     for (chn = 0; chn < CHANNELS; chn++) {
+        samples[chn] = (((unsigned char *)areas[chn].addr) + (areas[chn].first / 8));
         steps[chn] = areas[chn].step / 8; // Step size in bytes
     }
     /* fill the channel areas */
     while (count-- > 0) {
         res = sin(phase) * maxval;
-        if (to_unsigned)
-            res ^= 1U << (format_bits - 1);
         for (chn = 0; chn < CHANNELS; chn++) {
             /* Generate data in native endian format */
-            if (big_endian) {
-                for (int i = 0; i < bps; i++)
-                    *(samples[chn] + phys_bps - 1 - i) = (res >> i * 8) & 0xff;
-            } else {
-                for (int i = 0; i < bps; i++)
-                    *(samples[chn] + i) = (res >>  i * 8) & 0xff;
+            for (int i = 0; i < bps; i++) {
+                *(samples[chn] + i) = (res >>  i * 8) & 0xff; // TODO fix segfault here
             }
             samples[chn] += steps[chn];
         }
@@ -60,6 +54,11 @@ int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area
     remaining = period_size;
     while (remaining > 0) {
         bytes_written = snd_pcm_writei(handle, ptr, remaining); // TODO: error check this
+        if (bytes_written == -EAGAIN)
+                continue;
+            if (bytes_written < 0) {
+                break;  /* skip one period */
+            }
         ptr += bytes_written * CHANNELS;
         remaining -= bytes_written;
     }
@@ -125,6 +124,7 @@ int main () {
     snd_pcm_drain(handle);
     snd_pcm_close(handle);
     free(samples);
+    free(areas);
 
     return 0;
 }
