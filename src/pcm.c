@@ -1,57 +1,43 @@
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #define TIME 5000000
+#define TONE_FREQ 440
 #define FORMAT SND_PCM_FORMAT_S16_LE
 #define CHANNELS 1 // number of audio channels
 
 #include "pcm.h"
+#include <math.h>
 
-static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *_phase)
+static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *_phase, unsigned int sample_rate)
 {
     static double max_phase = 2. * M_PI;
     double phase = *_phase;
-    double step = max_phase*freq/(double)rate;
-    unsigned char *samples[channels];
-    int steps[channels];
+    double step = max_phase*TONE_FREQ/(double)sample_rate;
+    unsigned char *samples[CHANNELS];
+    int steps[CHANNELS];
     unsigned int chn;
-    int format_bits = snd_pcm_format_width(format);
+    int format_bits = snd_pcm_format_width(FORMAT);
     unsigned int maxval = (1 << (format_bits - 1)) - 1;
     int bps = format_bits / 8;  /* bytes per sample */
     int phys_bps = snd_pcm_format_physical_width(format) / 8;
     int big_endian = snd_pcm_format_big_endian(format) == 1;
     int to_unsigned = snd_pcm_format_unsigned(format) == 1;
-    int is_float = (format == SND_PCM_FORMAT_FLOAT_LE ||
-            format == SND_PCM_FORMAT_FLOAT_BE);
-    /* verify and prepare the contents of areas */
-    for (chn = 0; chn < channels; chn++) {
-        if ((areas[chn].first % 8) != 0) {
-            printf("areas[%u].first == %u, aborting...\n", chn, areas[chn].first);
-            exit(EXIT_FAILURE);
-        }
-        samples[chn] = /*(signed short *)*/(((unsigned char *)areas[chn].addr) + (areas[chn].first / 8));
-        if ((areas[chn].step % 16) != 0) {
-            printf("areas[%u].step == %u, aborting...\n", chn, areas[chn].step);
-            exit(EXIT_FAILURE);
-        }
-        steps[chn] = areas[chn].step / 8;
-        samples[chn] += offset * steps[chn];
+    int res;
+    // set the step size for each channel;
+    for (chn = 0; chn < CHANNELS; chn++) {
+        steps[chn] = areas[chn].step / 8; // Step size in bytes
     }
     /* fill the channel areas */
     while (count-- > 0) {
-        union {
-            float f;
-            int i;
-        } fval;
-        int res, i;
         res = sin(phase) * maxval;
         if (to_unsigned)
             res ^= 1U << (format_bits - 1);
-        for (chn = 0; chn < channels; chn++) {
+        for (chn = 0; chn < CHANNELS; chn++) {
             /* Generate data in native endian format */
             if (big_endian) {
-                for (i = 0; i < bps; i++)
+                for (int i = 0; i < bps; i++)
                     *(samples[chn] + phys_bps - 1 - i) = (res >> i * 8) & 0xff;
             } else {
-                for (i = 0; i < bps; i++)
+                for (int i = 0; i < bps; i++)
                     *(samples[chn] + i) = (res >>  i * 8) & 0xff;
             }
             samples[chn] += steps[chn];
@@ -63,11 +49,11 @@ static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *
     *_phase = phase;
 }
 
-int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas, snd_pcm_uframes_t period_size, double * phase) {
+int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas, snd_pcm_uframes_t period_size, double * phase, unsigned int sample_rate) {
     signed short *ptr;
     int bytes_written, remaining;
 
-    generate_sine(areas, 0, period_size, phase);
+    generate_sine(areas, period_size, phase, sample_rate);
     ptr = samples;
     remaining = period_size;
     while (remaining > 0) {
@@ -135,7 +121,7 @@ int main () {
     loops = TIME / sample_rate;
 
     for (; loops > 0; loops--) {
-        write_samples(handle, samples, areas, period_size, &phase);
+        write_samples(handle, samples, areas, period_size, &phase, sample_rate);
     }
 
     snd_pcm_drain(handle);
