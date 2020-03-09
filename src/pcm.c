@@ -1,16 +1,15 @@
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #define TIME 2000000
-#define TONE_FREQ 440
 #define FORMAT SND_PCM_FORMAT_S16_LE
 #define CHANNELS 1 // number of audio channels
 
 #include "pcm.h"
 
-static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *_phase, unsigned int sample_rate)
+static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *_phase, unsigned int sample_rate, double freq)
 {
     static double max_phase = 2. * M_PI;
     double phase = *_phase;
-    double step = (max_phase*TONE_FREQ)/(double)sample_rate;
+    double step = (max_phase*freq)/sample_rate;
     unsigned char *samples[CHANNELS];
     int steps[CHANNELS];
     unsigned int chn;
@@ -91,6 +90,7 @@ int main () {
     int size;
     int res;
     double phase = 0;
+    double freq = 440;
     snd_pcm_t *handle;
     snd_pcm_hw_params_t *params;
 
@@ -121,7 +121,7 @@ int main () {
     loops = TIME / period_time;
 
     for (; loops > 0; loops--) {
-        write_samples(handle, samples, areas, period_size, &phase, sample_rate);
+        write_samples(handle, samples, areas, period_size, &phase, sample_rate, freq);
     }
 
     snd_pcm_drain(handle);
