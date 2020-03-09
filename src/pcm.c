@@ -11,6 +11,7 @@ void sample_sine(tone_params * params)
     double phase = params->phase;
     snd_pcm_uframes_t count = params->period_size;
     snd_pcm_channel_area_t * areas = params->areas;
+
     double step = (max_phase*(params->freq))/(params->sample_rate);
     unsigned char *samples[CHANNELS];
     int steps[CHANNELS];
@@ -26,8 +27,10 @@ void sample_sine(tone_params * params)
 
     // set the step size for each channel;
     for (chn = 0; chn < CHANNELS; chn++) {
-        samples[chn] = (((unsigned char *)areas[chn].addr) + (areas[chn].first / 8));
-        steps[chn] = areas[chn].step / 8; // Step size in bytes
+        samples[chn] = (((unsigned char *)areas[chn].addr) + areas[chn].first);
+        printf("%x\n", areas[chn].addr);
+        printf("%d\n", areas[chn].first);
+        steps[chn] = areas[chn].step; // Step size in bytes
     }
     /* fill the channel areas */
     while (count-- > 0) {
@@ -97,7 +100,7 @@ int main () {
     snd_pcm_hw_params_t *params;
 
     signed short * samples; // 2 byte data size, because each frame is 2 bytes
-    snd_pcm_channel_area_t *areas;
+    snd_pcm_channel_area_t *areas = calloc(CHANNELS, sizeof(snd_pcm_channel_area_t));
 
     snd_pcm_uframes_t period_size = 16; // period size
     unsigned int sample_rate = 44100;
@@ -117,13 +120,14 @@ int main () {
 
     // Allocate the sample and area buffers
     samples = malloc((period_size * CHANNELS * snd_pcm_format_physical_width(FORMAT)) / 8);
-    areas = calloc(CHANNELS, sizeof(snd_pcm_channel_area_t));
 
     // set up the area buffer for each channel
     for (int chn = 0; chn < CHANNELS; chn++) {
         areas[chn].addr = samples;
-        areas[chn].first = chn * snd_pcm_format_physical_width(FORMAT);
-        areas[chn].step = CHANNELS * snd_pcm_format_physical_width(FORMAT);
+        printf("%x\n", areas[chn].addr);
+        areas[chn].first = chn * snd_pcm_format_physical_width(FORMAT) / 8;
+        printf("%d\n", areas[chn].first);
+        areas[chn].step = CHANNELS * snd_pcm_format_physical_width(FORMAT) / 8;
     }
 
     /* 5 seconds in microseconds divided by
