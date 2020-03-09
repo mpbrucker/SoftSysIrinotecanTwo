@@ -28,10 +28,9 @@ void sample_sine(tone_params * params)
     // set the step size for each channel;
     for (chn = 0; chn < CHANNELS; chn++) {
         samples[chn] = (((unsigned char *)areas[chn].addr) + areas[chn].first);
-        printf("%x\n", areas[chn].addr);
-        printf("%d\n", areas[chn].first);
         steps[chn] = areas[chn].step; // Step size in bytes
     }
+
     /* fill the channel areas */
     while (count-- > 0) {
         res = sin(phase) * maxval;
@@ -40,7 +39,6 @@ void sample_sine(tone_params * params)
             for (int i = 0; i < bps; i++) {
                 *(samples[chn] + i) = (res >>  i * 8) & 0xff; // TODO fix segfault here
             }
-            samples[chn] += steps[chn];
         }
         phase += step;
         if (phase >= max_phase)
@@ -124,15 +122,14 @@ int main () {
     // set up the area buffer for each channel
     for (int chn = 0; chn < CHANNELS; chn++) {
         areas[chn].addr = samples;
-        printf("%x\n", areas[chn].addr);
         areas[chn].first = chn * snd_pcm_format_physical_width(FORMAT) / 8;
-        printf("%d\n", areas[chn].first);
         areas[chn].step = CHANNELS * snd_pcm_format_physical_width(FORMAT) / 8;
     }
 
     /* 5 seconds in microseconds divided by
     * period time */
     loops = TIME / period_time;
+
 
     for (; loops > 0; loops--) {
         write_samples(handle, samples, &tone);
