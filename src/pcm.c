@@ -5,11 +5,13 @@
 
 #include "pcm.h"
 
-static void sample_sine(tone_params params)
+void sample_sine(tone_params * params)
 {
     static double max_phase = 2. * M_PI;
-    double phase = *_phase;
-    double step = (max_phase*freq)/sample_rate;
+    double phase = params->phase;
+    snd_pcm_uframes_t count = params->period_size;
+    snd_pcm_channel_area_t * areas = params->areas;
+    double step = (max_phase*(params->freq))/(params->sample_rate);
     unsigned char *samples[CHANNELS];
     int steps[CHANNELS];
     unsigned int chn;
@@ -18,10 +20,10 @@ static void sample_sine(tone_params params)
     int bps = format_bits / 8;  /* bytes per sample */
     int phys_bps = snd_pcm_format_physical_width(FORMAT) / 8;
     int big_endian = snd_pcm_format_big_endian(FORMAT) == 1;
-    // printf("%d", big_endian);
     int to_unsigned = snd_pcm_format_unsigned(FORMAT) == 1;
-    // printf("%d", to_unsigned);
     int res;
+
+
     // set the step size for each channel;
     for (chn = 0; chn < CHANNELS; chn++) {
         samples[chn] = (((unsigned char *)areas[chn].addr) + (areas[chn].first / 8));
@@ -41,10 +43,10 @@ static void sample_sine(tone_params params)
         if (phase >= max_phase)
             phase -= max_phase;
     }
-    *_phase = phase;
+    params->phase = phase;
 }
 
-int write_samples(snd_pcm_t *handle, signed short *samples, tone_params params) {
+int write_samples(snd_pcm_t *handle, signed short *samples, tone_params * params) {
     signed short *ptr;
     int bytes_written, remaining;
     sample_sine(params);
@@ -129,7 +131,7 @@ int main () {
     loops = TIME / period_time;
 
     for (; loops > 0; loops--) {
-        write_samples(handle, samples, areas, period_size, &phase, sample_rate, freq);
+        write_samples(handle, samples, &tone);
     }
 
     snd_pcm_drain(handle);
