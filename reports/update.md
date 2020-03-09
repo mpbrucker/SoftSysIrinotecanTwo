@@ -29,3 +29,7 @@ Currently, we are:
 * Debugging memory issues with the sound playback code (Matt). This will be done once a tone of a given frequency can be correctly generated (currently, it always plays the same note).
 * Refactoring the sound playback code to be more readable, using structs to store parameters (Matt). This will be done once all functions in pcm.c make use of the struct we created to hold sound parameters.
 * Implementing simple input buffering (Will). This will be done once we have a function that returns the value of the current key being pressed, or -1 or a similar value if no keys are pressed.
+
+
+**Trello board:** [link](https://trello.com/b/RNBfHLNZ/irinotecan)
+**Github repo:** [link](https://github.com/mpbrucker/SoftSysIrinotecanTwo)
