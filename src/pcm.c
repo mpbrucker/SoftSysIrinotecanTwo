@@ -5,7 +5,7 @@
 
 #include "pcm.h"
 
-static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *_phase, unsigned int sample_rate, double freq)
+static void sample_sine(tone_params params)
 {
     static double max_phase = 2. * M_PI;
     double phase = *_phase;
@@ -44,13 +44,12 @@ static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *
     *_phase = phase;
 }
 
-int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas, snd_pcm_uframes_t period_size, double * phase, unsigned int sample_rate) {
+int write_samples(snd_pcm_t *handle, signed short *samples, tone_params params) {
     signed short *ptr;
     int bytes_written, remaining;
-    // printf("test%d\n", sample_rate);
-    sample_sine(areas, period_size, phase, sample_rate);
+    sample_sine(params);
     ptr = samples;
-    remaining = period_size;
+    remaining = params->period_size;
     while (remaining > 0) {
         bytes_written = snd_pcm_writei(handle, ptr, remaining); // TODO: error check this
         if (bytes_written == -EAGAIN)
@@ -65,7 +64,7 @@ int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area
 
 
 // Opens a specified playback device and sets hardware settings.
-void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_pcm_uframes_t * period_size, unsigned int * sample_rate, unsigned int * period_time, char * dev_name) {
+void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, tone_params * tone, unsigned int * period_time, char * dev_name) {
     int dir;
     int res = snd_pcm_open(handle, dev_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC);
 
@@ -76,14 +75,15 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_
     snd_pcm_hw_params_set_format(*handle, *params, FORMAT);
     snd_pcm_hw_params_set_channels(*handle, *params, CHANNELS);
     // Set sample rate and period size (_near sets parameter space as close as possible)
-    snd_pcm_hw_params_set_rate_near(*handle, *params, sample_rate, &dir);
-    snd_pcm_hw_params_set_period_size_near(*handle, *params, period_size, &dir);
+    snd_pcm_hw_params_set_rate_near(*handle, *params, &(tone->sample_rate), &dir);
+    snd_pcm_hw_params_set_period_size_near(*handle, *params, &(tone->period_size), &dir);
 
     res = snd_pcm_hw_params(*handle, *params);
     // Get period size and time
-    snd_pcm_hw_params_get_period_size(*params, period_size, &dir);
+    snd_pcm_hw_params_get_period_size(*params, &(tone->period_size), &dir);
     snd_pcm_hw_params_get_period_time(*params, period_time, &dir);
 }
+
 
 int main () {
     long loops;
@@ -102,7 +102,15 @@ int main () {
     unsigned int period_time;
     int dir;
 
-    open_playback_device(&handle, &params, &period_size, &sample_rate, &period_time, "default");
+    tone_params tone = {
+        areas=areas,
+        period_size=16,
+        phase=0,
+        sample_rate=44100,
+        freq=440
+    };
+
+    open_playback_device(&handle, &params, &tone, &period_time, "default");
 
 
     // Allocate the sample and area buffers
