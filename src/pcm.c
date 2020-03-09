@@ -1,6 +1,6 @@
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #define TIME 2000000
-#define TONE_FREQ 50
+#define TONE_FREQ 440
 #define FORMAT SND_PCM_FORMAT_S16_LE
 #define CHANNELS 1 // number of audio channels
 
@@ -10,7 +10,7 @@ static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *
 {
     static double max_phase = 2. * M_PI;
     double phase = *_phase;
-    double step = max_phase*TONE_FREQ/(double)sample_rate;
+    double step = (max_phase*TONE_FREQ)/(double)sample_rate;
     unsigned char *samples[CHANNELS];
     int steps[CHANNELS];
     unsigned int chn;
@@ -48,7 +48,7 @@ static void sample_sine(const snd_pcm_channel_area_t *areas, int count, double *
 int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area_t *areas, snd_pcm_uframes_t period_size, double * phase, unsigned int sample_rate) {
     signed short *ptr;
     int bytes_written, remaining;
-
+    // printf("test%d\n", sample_rate);
     sample_sine(areas, period_size, phase, sample_rate);
     ptr = samples;
     remaining = period_size;
@@ -66,7 +66,7 @@ int write_samples(snd_pcm_t *handle, signed short *samples, snd_pcm_channel_area
 
 
 // Opens a specified playback device and sets hardware settings.
-void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_pcm_uframes_t * period_size, unsigned int * sample_rate, char * dev_name) {
+void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_pcm_uframes_t * period_size, unsigned int * sample_rate, unsigned int * period_time, char * dev_name) {
     int dir;
     int res = snd_pcm_open(handle, dev_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC);
 
@@ -83,7 +83,7 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, snd_
     res = snd_pcm_hw_params(*handle, *params);
     // Get period size and time
     snd_pcm_hw_params_get_period_size(*params, period_size, &dir);
-    snd_pcm_hw_params_get_period_time(*params, sample_rate, &dir);
+    snd_pcm_hw_params_get_period_time(*params, period_time, &dir);
 }
 
 int main () {
@@ -99,8 +99,11 @@ int main () {
 
     snd_pcm_uframes_t period_size = 16; // period size
     unsigned int sample_rate = 44100;
+    unsigned int period_time;
+    int dir;
 
-    open_playback_device(&handle, &params, &period_size, &sample_rate, "default");
+    open_playback_device(&handle, &params, &period_size, &sample_rate, &period_time, "default");
+
 
     // Allocate the sample and area buffers
     samples = malloc((period_size * CHANNELS * snd_pcm_format_physical_width(FORMAT)) / 8);
@@ -115,7 +118,7 @@ int main () {
 
     /* 5 seconds in microseconds divided by
     * period time */
-    loops = TIME / sample_rate;
+    loops = TIME / period_time;
 
     for (; loops > 0; loops--) {
         write_samples(handle, samples, areas, period_size, &phase, sample_rate);
