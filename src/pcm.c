@@ -19,9 +19,6 @@ void sample_sine(tone_params * params)
     int format_bits = snd_pcm_format_width(FORMAT);
     unsigned int maxval = (1 << (format_bits - 1)) - 1;
     int bps = format_bits / 8;  /* bytes per sample */
-    int phys_bps = snd_pcm_format_physical_width(FORMAT) / 8;
-    int big_endian = snd_pcm_format_big_endian(FORMAT) == 1;
-    int to_unsigned = snd_pcm_format_unsigned(FORMAT) == 1;
     int res;
 
 
@@ -39,6 +36,7 @@ void sample_sine(tone_params * params)
             for (int i = 0; i < bps; i++) {
                 *(samples[chn] + i) = (res >>  i * 8) & 0xff; // TODO fix segfault here
             }
+            samples[chn] += steps[chn];
         }
         phase += step;
         if (phase >= max_phase)
@@ -47,7 +45,7 @@ void sample_sine(tone_params * params)
     params->phase = phase;
 }
 
-int write_samples(snd_pcm_t *handle, signed short *samples, tone_params * params) {
+void write_samples(snd_pcm_t *handle, signed short *samples, tone_params * params) {
     signed short *ptr;
     int bytes_written, remaining;
     sample_sine(params);
@@ -93,7 +91,7 @@ int main () {
     int size;
     int res;
     double phase = 0;
-    double freq = 440;
+    double freq = 400;
     snd_pcm_t *handle;
     snd_pcm_hw_params_t *params;
 
