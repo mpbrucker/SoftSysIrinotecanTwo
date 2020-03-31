@@ -67,7 +67,7 @@ void write_samples(snd_pcm_t *handle, signed short *samples, tone_params * param
 // Opens a specified playback device and sets hardware settings.
 void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, tone_params * tone, unsigned int * period_time, char * dev_name) {
     int dir;
-    int res = snd_pcm_open(handle, dev_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC);
+    snd_pcm_open(handle, dev_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC);
 
     // Allocate hardware parameters object and set defaults.
     snd_pcm_hw_params_alloca(params);
@@ -88,8 +88,6 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, tone
 
 int main () {
     long loops;
-    int size;
-    int res;
     double phase = 0;
     double freq = 400;
     snd_pcm_t *handle;
@@ -101,14 +99,13 @@ int main () {
     snd_pcm_uframes_t period_size = 16; // period size
     unsigned int sample_rate = 44100;
     unsigned int period_time;
-    int dir;
 
     tone_params tone = {
         areas=areas,
         period_size=16,
         phase=0,
         sample_rate=44100,
-        freq=440
+        freq=600
     };
 
     open_playback_device(&handle, &params, &tone, &period_time, "default");
