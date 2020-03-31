@@ -79,7 +79,7 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, tone
     snd_pcm_hw_params_set_rate_near(*handle, *params, &(tone->sample_rate), &dir);
     snd_pcm_hw_params_set_period_size_near(*handle, *params, &(tone->period_size), &dir);
 
-    res = snd_pcm_hw_params(*handle, *params);
+    snd_pcm_hw_params(*handle, *params);
     // Get period size and time
     snd_pcm_hw_params_get_period_size(*params, &(tone->period_size), &dir);
     snd_pcm_hw_params_get_period_time(*params, period_time, &dir);
