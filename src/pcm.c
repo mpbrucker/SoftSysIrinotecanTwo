@@ -113,9 +113,8 @@ int main () {
 
     open_playback_device(&handle, &params, &tone, &period_time, "default");
 
-
     // Allocate the sample and area buffers
-    samples = malloc((period_size * CHANNELS * snd_pcm_format_physical_width(FORMAT)) / 8);
+    samples = malloc((tone.period_size * CHANNELS * snd_pcm_format_physical_width(FORMAT)) / 8);
 
     // set up the area buffer for each channel
     for (int chn = 0; chn < CHANNELS; chn++) {
