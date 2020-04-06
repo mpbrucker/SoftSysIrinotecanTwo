@@ -1,12 +1,14 @@
 #include "Irinotecan.h"
 #include "keyInput.h"
 #include "pcm.h"
+#include "hashset_itr.h"
 
 #include <stdio.h> 
 #include <stdlib.h> 
 #include <unistd.h> 
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+hashset_t keys;
 
 double Key2Freq(int keyCode){
     double freq = 0;
@@ -125,21 +127,42 @@ double Key2Freq(int keyCode){
             break;
     }
 }
+void KeyProcessing(){
+    //TODO
+    printf("Set: ");
+    hashset_itr_t hitr = hashset_iterator(keys);
+    int i = -1;
+    do{
+        int val = (int)hashset_iterator_value(hitr);
+        if (val != 0 && val != 1){
+            i++;
+            updatePCM(Key2Freq(val), i); //Update set values
+        }
+    } while (hashset_iterator_next(hitr) != -1 && i < MAXNOTES);
+    i++;
+    for (;i < MAXNOTES; i++){
+        updatePCM(0, i); //set rest to 0 hz
+    }
+    printf("\n total length: %lu\n", hashset_num_items(keys));
+    //Key2Freq(keyCode);
+}
 
 void setKey(int keyCode){
     pthread_mutex_lock(&mutex);
-    currkey = keyCode;
+    if (hashset_add(keys, (void *) (size_t)keyCode)){
+        printf("added: %d\n", keyCode);
+    }
     //Update PCM
-    updatePCM(Key2Freq(keyCode));
+    KeyProcessing();
+    
     pthread_mutex_unlock(&mutex);
 }
 
 void releaseKey(int keyCode){
     pthread_mutex_lock(&mutex);
-    if (keyCode == currkey){
-        currkey = -1;
-        //Update PCM
-        updatePCM(0);
+    if (hashset_remove(keys, (void *) (size_t)keyCode)){
+        printf("removed: %d\n", keyCode);
+        KeyProcessing();
     }
     
     pthread_mutex_unlock(&mutex);

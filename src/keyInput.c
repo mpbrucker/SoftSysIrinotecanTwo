@@ -9,7 +9,8 @@
 
 #define NIL (0)
 
-int currkey = -1;
+//int currkey = -1;
+hashset_t keys;
 static volatile int running = 1;
 
 void killKeyCapture(){
@@ -18,7 +19,11 @@ void killKeyCapture(){
 
 void * keyCapture() {
 
+    // Signal Catch program kill
     signal(SIGINT, killKeyCapture);
+
+    //Initialize hashset
+    keys = hashset_create();
 
     //Xlib Attempt
     Display * dpy = XOpenDisplay(NIL);
@@ -61,9 +66,6 @@ void * keyCapture() {
 
     // Turn AutoRepeat Off
     XAutoRepeatOff(dpy);
-
-    // Signal Catch program kill
-    
 
     // Read incoming key events
     while(running) {
