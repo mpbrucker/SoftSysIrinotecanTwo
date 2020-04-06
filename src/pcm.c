@@ -55,12 +55,12 @@ void sample_sine(tone_params * params)
     params->phase = phase;
 }
 
-void write_samples(snd_pcm_t *handle, signed short *samples, tone_params * params) {
+void write_samples(snd_pcm_t *handle, signed short *samples, tone_params * params, int *nframes) {
     signed short *ptr;
     int bytes_written, remaining;
     sample_sine(params);
     ptr = samples;
-    remaining = params->period_size;
+    remaining = tone->period_size;
     while (remaining > 0) {
         bytes_written = snd_pcm_writei(handle, ptr, remaining); // TODO: error check this
         if (bytes_written == -EAGAIN)
@@ -74,6 +74,7 @@ void write_samples(snd_pcm_t *handle, signed short *samples, tone_params * param
         ptr += bytes_written * CHANNELS;
         remaining -= bytes_written;
     }
+    *nframes = (tone->period_size - remaining);
 }
 
 
@@ -175,14 +176,41 @@ int runPCM () {
         tone->areas[chn].first = chn * snd_pcm_format_physical_width(FORMAT);
         tone->areas[chn].step = CHANNELS * snd_pcm_format_physical_width(FORMAT);
     }
-    printf("%d",period_time);
     /* 5 seconds in microseconds divided by
     * period time */
     //loops = TIME / period_time;
 
     //for (; loops > 0; loops--) {
     while(running){
-        write_samples(handle, samples, tone);
+        int err;
+        if ((err = snd_pcm_wait (handle, 1000)) < 0) {
+            fprintf (stderr, "poll failed (%s)\n", strerror (errno));
+            break;
+        }
+
+        /* find out how much space is available for playback data */
+        int frames_to_deliver;
+        if ((frames_to_deliver = snd_pcm_avail_update (handle)) < 0) {
+            if (frames_to_deliver == -EPIPE) {
+                fprintf (stderr, "an xrun occured\n");
+                break;
+            } else {
+                fprintf (stderr, "unknown ALSA avail update return value (%d)\n", 
+                     frames_to_deliver);
+                break;
+            }
+        }
+
+        int dead_space = (tone->period_size * tone->periods - 8192);
+        frames_to_deliver -= dead_space;
+        if (frames_to_deliver < 0) continue;
+
+        frames_to_deliver = (frames_to_deliver < tone->period_size) ? tone->period_size : frames_to_deliver;
+
+        /* deliver the data */
+        while (frames_to_deliver > tone->period_size){
+            write_samples(handle, samples, tone, &frames_to_deliver);
+        }
     }
 
     snd_pcm_drain(handle);
