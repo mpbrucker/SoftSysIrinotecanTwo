@@ -201,7 +201,7 @@ int runPCM () {
             }
         }
 
-        int dead_space = (tone->period_size * tone->periods - 8192);
+        int dead_space = (tone->period_size * tone->periods - 4096);
         frames_to_deliver -= dead_space;
         if (frames_to_deliver < 0) continue;
 
