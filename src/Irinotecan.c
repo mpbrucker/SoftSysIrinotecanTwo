@@ -5,11 +5,13 @@
 
 #include <stdio.h> 
 #include <stdlib.h> 
-#include <unistd.h> 
+#include <unistd.h>
+#define SEMITONE 1.059463094359295
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 hashset_t keys;
 double multiplier = 1;
+
 
 double Key2Freq(int keyCode){
     double freq = 0;
@@ -167,25 +169,38 @@ double Key2Freq(int keyCode){
             break;
 
         case 113: //Left Arrow
-            multiplier *= 0.943874312681694; //semitones
+            multiplier *= 1/SEMITONE;  // semitones
+            soundModPrint();
             break;
         case 114: //Right Arrow
-            multiplier *= 1.059463094359295; //semitones
+            multiplier *= SEMITONE;  // semitones
+            soundModPrint();
             break;
         case 111: //Up Arrow
-            multiplier *= 2;
+            multiplier *= 2;  // octaves
+            soundModPrint();
             break;
         case 116: //Down Arrow
-            multiplier *= .5;
+            multiplier *= .5;  // octaves
+            soundModPrint();
             break;
         default:
             break;
     }
     return freq;
 }
+
+void soundModPrint(){
+    double octs = log2(multiplier);
+    int octaves = octs>0 ? floor(octs) : ceil(octs);
+    double semis = log(multiplier*pow(2, -octaves))/log(SEMITONE);
+    int semitones = round(semis);
+
+    printf("\nsound modification: %d octave, %d semitones\n", octaves, semitones);
+}
+
 void KeyProcessing(){
-    //TODO
-    printf("Set: ");
+    //printf("Set: ");
     hashset_itr_t hitr = hashset_iterator(keys);
     int i = -1;
     do{
@@ -199,14 +214,14 @@ void KeyProcessing(){
     for (;i < MAXNOTES; i++){
         updatePCM(0, i); //set rest to 0 hz
     }
-    printf("\n total length: %lu\n", hashset_num_items(keys));
+    //printf("\n total length: %lu\n", hashset_num_items(keys));
     //Key2Freq(keyCode);
 }
 
 void setKey(int keyCode){
     pthread_mutex_lock(&mutex);
     if (hashset_add(keys, (void *) (size_t)keyCode)){
-        printf("added: %d\n", keyCode);
+        //printf("added: %d\n", keyCode);
     }
     //Update PCM
     KeyProcessing();
@@ -217,7 +232,7 @@ void setKey(int keyCode){
 void releaseKey(int keyCode){
     pthread_mutex_lock(&mutex);
     if (hashset_remove(keys, (void *) (size_t)keyCode)){
-        printf("removed: %d\n", keyCode);
+        //printf("removed: %d\n", keyCode);
         KeyProcessing();
     }
     
