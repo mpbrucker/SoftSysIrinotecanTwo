@@ -9,10 +9,17 @@
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 hashset_t keys;
+double multiplier = 1;
 
 double Key2Freq(int keyCode){
     double freq = 0;
     switch(keyCode){
+        case 66: //A#3
+            freq = 233.08;
+            break;
+        case 50: //B3
+            freq = 246.94;
+            break;
         case 52: //C4
             freq = 261.63;
             break;
@@ -43,9 +50,12 @@ double Key2Freq(int keyCode){
         case 57: //A4
             freq = 440.00;
             break;
+        case 49: //A#4
         case 44: //A#4
             freq = 466.16;
             break;
+
+        case 23: //B4
         case 58: //B4
             freq = 493.88;
             break;
@@ -77,10 +87,11 @@ double Key2Freq(int keyCode){
         
         
         
-        
+        case 62: //F5
         case 27: //F5
             freq = 698.46;
             break;
+        case 36: //F#5
         case 14: //F#5
             freq = 739.99;
             break;
@@ -121,11 +132,56 @@ double Key2Freq(int keyCode){
             freq = 1479.98;
             break;
         case 35: //G6
+        case 67: //G6
             freq = 1567.98;
+            break;
+        case 22: //G#6
+        case 68: //G#6
+            freq = 1661.22;
+            break;
+        case 69: //A6
+        case 51: //A6
+            freq = 1760.00;
+            break;
+
+        case 70: //A#6
+            freq = 1864.66;
+            break;
+        case 71: //B6
+            freq = 1975.53;
+            break;
+        case 72: //C6
+            freq = 2093.00;
+            break;
+        case 73: //C#6
+            freq = 2217.46;
+            break;
+        case 74: //D6
+            freq = 2349.32;
+            break;
+        case 75: //D#6
+            freq = 2489.02;
+            break;
+        case 76: //E6
+            freq = 2637.02;
+            break;
+
+        case 113: //Left Arrow
+            multiplier *= 0.943874312681694; //semitones
+            break;
+        case 114: //Right Arrow
+            multiplier *= 1.059463094359295; //semitones
+            break;
+        case 111: //Up Arrow
+            multiplier *= 2;
+            break;
+        case 116: //Down Arrow
+            multiplier *= .5;
             break;
         default:
             break;
     }
+    return freq;
 }
 void KeyProcessing(){
     //TODO
@@ -136,7 +192,7 @@ void KeyProcessing(){
         int val = (int)hashset_iterator_value(hitr);
         if (val != 0 && val != 1){
             i++;
-            updatePCM(Key2Freq(val), i); //Update set values
+            updatePCM(Key2Freq(val)*multiplier, i); //Update set values
         }
     } while (hashset_iterator_next(hitr) != -1 && i < MAXNOTES);
     i++;
