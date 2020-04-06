@@ -71,11 +71,11 @@ void * keyCapture() {
         XNextEvent(dpy, &e);
         if (e.type == KeyPress){
             setKey(e.xkey.keycode);
-            printf("pressed key: %u\n", e.xkey.keycode);
+            //printf("pressed key: %u\n", e.xkey.keycode);
         }
         if (e.type == KeyRelease){
             releaseKey(e.xkey.keycode);
-            printf("released key: %u\n", e.xkey.keycode);
+            //printf("released key: %u\n", e.xkey.keycode);
         }
         //printf("CK: %i\n", currkey);
     }

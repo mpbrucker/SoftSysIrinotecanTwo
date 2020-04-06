@@ -68,6 +68,9 @@ void write_samples(snd_pcm_t *handle, signed short *samples, tone_params * param
             if (bytes_written < 0) {
                 break;  /* skip one period */
             }
+        if (bytes_written == -32){
+            snd_pcm_prepare(handle);
+        }
         ptr += bytes_written * CHANNELS;
         remaining -= bytes_written;
     }
@@ -119,7 +122,7 @@ int open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, tone_
     snd_output_stdio_attach(&output, stdout, 0);
     snd_pcm_hw_params_dump(*params, output);
     snd_output_close(output);
-    exit(0);
+    return 0;
 }
 
 
@@ -127,11 +130,11 @@ tone_params *init_tone(){
     tone = malloc(sizeof(tone_params));
     snd_pcm_channel_area_t *areas = calloc(CHANNELS, sizeof(snd_pcm_channel_area_t));
     tone->areas = areas;
-    tone->period_size = 8192;
+    tone->period_size = 16;
     tone->periods = 2;
     tone->phase=0;
     tone->sample_rate=44100;
-    tone->freq=600;
+    tone->freq=0;
     return tone;
 }
 void free_tone(tone_params *tone){
