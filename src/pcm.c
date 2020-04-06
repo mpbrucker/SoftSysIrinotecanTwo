@@ -4,6 +4,16 @@
 #define CHANNELS 1 // number of audio channels
 
 #include "pcm.h"
+#include <signal.h>
+#include <stdio.h>
+#include <stdio.h>
+
+static volatile int running = 1;
+tone_params * tone;
+
+void killPCM(){
+    running = 0;
+}
 
 void sample_sine(tone_params * params)
 {
@@ -65,7 +75,7 @@ void write_samples(snd_pcm_t *handle, signed short *samples, tone_params * param
 
 
 // Opens a specified playback device and sets hardware settings.
-void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, tone_params * tone, unsigned int * period_time, char * dev_name) {
+int open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, tone_params * tone, unsigned int * period_time, char * dev_name) {
     int dir;
     snd_pcm_open(handle, dev_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_ASYNC);
 
@@ -81,57 +91,103 @@ void open_playback_device(snd_pcm_t **handle, snd_pcm_hw_params_t **params, tone
 
     snd_pcm_hw_params(*handle, *params);
     // Get period size and time
-    snd_pcm_hw_params_get_period_size(*params, &(tone->period_size), &dir);
+    if(snd_pcm_hw_params_set_period_size(*handle, *params, tone->period_size, dir)){
+        fprintf(stderr, "Error setting period_size.\n");
+        return -1;
+    }
+
+    if(snd_pcm_hw_params_set_periods_min(*handle, *params, &(tone->periods), &dir)){
+        fprintf(stderr, "Error setting min #periods.\n");
+        printf("min_periods: %u\n", (tone->periods));
+        return -1;
+    }
+    printf("min_periods: %u\n", (tone->periods));
+
+    if(snd_pcm_hw_params_set_periods(*handle, *params, tone->periods, dir)){
+        fprintf(stderr, "Error setting #periods.\n");
+        snd_pcm_hw_params_get_periods(*params, &(tone->periods), &dir);
+        printf("periods: %u, %d", tone->periods, dir);
+        return -1;
+    }
     snd_pcm_hw_params_get_period_time(*params, period_time, &dir);
+    unsigned int p;
+    snd_pcm_hw_params_get_periods(*params, &p, &dir);
+    printf("periods: %u\n", p);
+
+    snd_output_t *output;
+
+    snd_output_stdio_attach(&output, stdout, 0);
+    snd_pcm_hw_params_dump(*params, output);
+    snd_output_close(output);
+    exit(0);
 }
 
 
-int main () {
+tone_params *init_tone(){
+    tone = malloc(sizeof(tone_params));
+    snd_pcm_channel_area_t *areas = calloc(CHANNELS, sizeof(snd_pcm_channel_area_t));
+    tone->areas = areas;
+    tone->period_size = 8192;
+    tone->periods = 2;
+    tone->phase=0;
+    tone->sample_rate=44100;
+    tone->freq=600;
+    return tone;
+}
+void free_tone(tone_params *tone){
+    free(tone->areas);
+    free(tone);
+}
+
+void updatePCM(double v){
+    tone->freq = v;
+}
+
+int runPCM () {
+    signal(SIGINT, killPCM);
+
     long loops;
-    double phase = 0;
-    double freq = 400;
     snd_pcm_t *handle;
     snd_pcm_hw_params_t *params;
+    snd_pcm_uframes_t frames;
 
     signed short * samples; // 2 byte data size, because each frame is 2 bytes
-    snd_pcm_channel_area_t *areas = calloc(CHANNELS, sizeof(snd_pcm_channel_area_t));
-
-    snd_pcm_uframes_t period_size = 16; // period size
-    unsigned int sample_rate = 44100;
+    
     unsigned int period_time;
 
-    tone_params tone = {
-        areas=areas,
-        period_size=16,
-        phase=0,
-        sample_rate=44100,
-        freq=600
-    };
+    tone = init_tone();
 
-    open_playback_device(&handle, &params, &tone, &period_time, "default");
+    if (open_playback_device(&handle, &params, tone, &period_time, "default")){
+        return -1;
+    }
 
+    printf("period size: %lu\n",tone->period_size);
+    printf("period time: %u\n",period_time);
     // Allocate the sample and area buffers
-    samples = malloc((tone.period_size * CHANNELS * snd_pcm_format_physical_width(FORMAT)) / 8);
+    samples = malloc((tone->period_size * CHANNELS * snd_pcm_format_physical_width(FORMAT)) / 8);
 
     // set up the area buffer for each channel
     for (int chn = 0; chn < CHANNELS; chn++) {
-        areas[chn].addr = samples;
-        areas[chn].first = chn * snd_pcm_format_physical_width(FORMAT);
-        areas[chn].step = CHANNELS * snd_pcm_format_physical_width(FORMAT);
+        tone->areas[chn].addr = samples;
+        tone->areas[chn].first = chn * snd_pcm_format_physical_width(FORMAT);
+        tone->areas[chn].step = CHANNELS * snd_pcm_format_physical_width(FORMAT);
     }
-
+    printf("%d",period_time);
     /* 5 seconds in microseconds divided by
     * period time */
-    loops = TIME / period_time;
+    //loops = TIME / period_time;
 
-    for (; loops > 0; loops--) {
-        write_samples(handle, samples, &tone);
+    //for (; loops > 0; loops--) {
+    while(running){
+        write_samples(handle, samples, tone);
     }
 
     snd_pcm_drain(handle);
     snd_pcm_close(handle);
     free(samples);
-    free(areas);
-
-    return 0;
+    free_tone(tone);
 }
+
+// int main(){
+//     runPCM();
+// }

@@ -1,3 +1,5 @@
-#include <curses.h>
+#include "globals.h"
 
-int main();
+void * keyCapture();
+void setKey(int keyCode);
+void releaseKey(int keyCode);
