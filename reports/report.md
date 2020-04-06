@@ -67,7 +67,8 @@ Ultimately, we tried our best and we did succeed at finishing our MVP, which fee
 
 **Matt:** While I didn't end up learning about input buffering due to how we split up the work, I do feel like I got a good amount of experience working with structs which I found pretty enlightening, and I learned a *lot* about working with C libraries through our use of ALSA. In the future I would take a more bottom-up approach to usage of a complex library like ALSA and prioritize understanding everything that's happening over getting code running.
 
-**Will:**
+**Will:** This project was a great way to learn more about interfacing with libraries.  Matt and I spent a lot of time trying to understand the Xlib and Alsa libraries.  The documentation for Xlib was really well made.  The concepts behind the library are a bit complex, but the resources.  ALSA on the other hand, was fairly thin in its documentation coverage.  As such, numerous times Matt and I had to dive into the source code to really try to understand what was happening.  But there was a lot to understand and not enough time, so ultimately towards the end we started making assumptions about how things worked at expense of potentially terrible errors.  Given more time it would be great to understand the inner workings of the library, but that is a task suited for a project longer than this one.
+
 
 **Trello board:** [link](https://trello.com/b/RNBfHLNZ/irinotecan)
 **Github repo:** [link](https://github.com/mpbrucker/SoftSysIrinotecanTwo)
