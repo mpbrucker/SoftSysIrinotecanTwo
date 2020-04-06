@@ -17,6 +17,8 @@
  *
  */
 
+// Edited slightly by Juicyslew
+
 #include <assert.h>
 #include <stdio.h>
 #include "hashset_itr.h"
@@ -29,7 +31,7 @@ hashset_itr_t hashset_iterator(hashset_t set)
 
   itr->set = set;
   itr->index = 0;
-  
+
   return itr;
 }
 
